@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>DeskBuddy Web</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <h1>DeskBuddy Web</h1>
+
+  <div class="card">
+    <h2>Eye Break Timer (20 menit)</h2>
+    <button onclick="startEyeBreak()">Start</button>
+    <p id="eye-status">Next break: --</p>
+  </div>
+
+  <div class="card">
+    <h2>Hydration Reminder (60 menit)</h2>
+    <button onclick="startHydration()">Start</button>
+    <p id="water-status">Next drink: --</p>
+  </div>
+
+  <div class="card">
+    <h2>Pomodoro</h2>
+    <p id="pomo-timer">25:00</p>
+    <button onclick="startPomodoro()">Start</button>
+    <button onclick="resetPomodoro()">Reset</button>
+  </div>
+
+  <div class="card">
+    <h2>To-Do List</h2>
+    <ul id="todo-list"></ul>
+    <input id="todo-input" placeholder="Tambah tugas">
+    <button onclick="addTodo()">Tambah</button>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
