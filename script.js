@@ -1,79 +1,180 @@
-// --- Notifikasi Browser ---
-function notify(msg) {
-    if (Notification.permission === "granted") {
-        new Notification(msg);
+// ===== util: notifikasi aman =====
+const NotificationSafe = {
+  isSupported: () => "Notification" in window,
+  requestPermissionIfNeeded: async () => {
+    if (!NotificationSafe.isSupported()) return false;
+    if (Notification.permission === "granted") return true;
+    if (Notification.permission === "denied") return false;
+    // modern browsers return a Promise
+    try {
+      const perm = await Notification.requestPermission();
+      return perm === "granted";
+    } catch (e) {
+      return false;
     }
-}
+  },
+  notify: (title, body) => {
+    if (!NotificationSafe.isSupported()) return;
+    try {
+      new Notification(title, { body });
+    } catch (e) {
+      console.warn("Notification failed:", e);
+    }
+  }
+};
 
-// Minta izin notifikasi
-Notification.requestPermission();
+// minta izin sekali di awal (tapi jangan paksa user)
+NotificationSafe.requestPermissionIfNeeded();
 
-// --- Eye Break Timer ---
+// ===== Eye break timer (repeatable) =====
+let eyeIntervalMin = 20;
+let eyeIntervalId = null;
+
+const eyeStartBtn = document.getElementById("eye-start");
+const eyeStopBtn = document.getElementById("eye-stop");
+const eyeStatus = document.getElementById("eye-status");
+document.getElementById("eye-interval-text").textContent = eyeIntervalMin;
+
 function startEyeBreak() {
-    setTimeout(() => {
-        notify("Istirahatkan mata 20 detik!");
-        document.getElementById("eye-status").textContent = "Next break: 20 menit lagi";
-    }, 20 * 60000);
+  if (eyeIntervalId) return; // sudah jalan
+  eyeStatus.textContent = `Status: berjalan (${eyeIntervalMin} menit)`;
+  // jalankan pertama kali setelah interval lalu ulang terus
+  eyeIntervalId = setInterval(() => {
+    NotificationSafe.notify("Istirahat Mata", "Istirahatkan mata 20 detik (20–20–20).");
+  }, eyeIntervalMin * 60 * 1000);
 }
 
-// --- Hydration Reminder ---
+function stopEyeBreak() {
+  if (!eyeIntervalId) return;
+  clearInterval(eyeIntervalId);
+  eyeIntervalId = null;
+  eyeStatus.textContent = "Status: berhenti";
+}
+
+eyeStartBtn.addEventListener("click", startEyeBreak);
+eyeStopBtn.addEventListener("click", stopEyeBreak);
+
+// ===== Hydration timer (repeatable) =====
+let waterIntervalMin = 60;
+let waterIntervalId = null;
+
+const waterStartBtn = document.getElementById("water-start");
+const waterStopBtn = document.getElementById("water-stop");
+const waterStatus = document.getElementById("water-status");
+document.getElementById("water-interval-text").textContent = waterIntervalMin;
+
 function startHydration() {
-    setTimeout(() => {
-        notify("Waktunya minum air!");
-        document.getElementById("water-status").textContent = "Next drink: 60 menit lagi";
-    }, 60 * 60000);
+  if (waterIntervalId) return;
+  waterStatus.textContent = `Status: berjalan (${waterIntervalMin} menit)`;
+  waterIntervalId = setInterval(() => {
+    NotificationSafe.notify("Waktunya Minum", "Jangan lupa minum air ya!");
+  }, waterIntervalMin * 60 * 1000);
 }
 
-// --- Pomodoro ---
-let pomoTime = 25 * 60;
-let pomoInterval;
+function stopHydration() {
+  if (!waterIntervalId) return;
+  clearInterval(waterIntervalId);
+  waterIntervalId = null;
+  waterStatus.textContent = "Status: berhenti";
+}
+
+waterStartBtn.addEventListener("click", startHydration);
+waterStopBtn.addEventListener("click", stopHydration);
+
+// ===== Pomodoro simple =====
+let pomoDefault = 25 * 60; // detik
+let pomoTime = pomoDefault;
+let pomoInterval = null;
+
+const pomoTimerEl = document.getElementById("pomo-timer");
+const pomoStart = document.getElementById("pomo-start");
+const pomoPause = document.getElementById("pomo-pause");
+const pomoReset = document.getElementById("pomo-reset");
+
+function renderPomo() {
+  let m = Math.floor(pomoTime / 60);
+  let s = pomoTime % 60;
+  pomoTimerEl.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
 
 function startPomodoro() {
-    pomoInterval = setInterval(() => {
-        pomoTime--;
-        let min = Math.floor(pomoTime / 60);
-        let sec = pomoTime % 60;
-        document.getElementById("pomo-timer").textContent = 
-            `${min}:${sec.toString().padStart(2, '0')}`;
+  if (pomoInterval) return; // sudah jalan
+  pomoInterval = setInterval(() => {
+    if (pomoTime > 0) {
+      pomoTime--;
+      renderPomo();
+    } else {
+      clearInterval(pomoInterval);
+      pomoInterval = null;
+      NotificationSafe.notify("Pomodoro Selesai", "Waktunya istirahat!");
+      pomoTime = pomoDefault;
+      renderPomo();
+    }
+  }, 1000);
+}
 
-        if (pomoTime <= 0) {
-            clearInterval(pomoInterval);
-            notify("Selesai! Waktunya istirahat.");
-            pomoTime = 25 * 60;
-        }
-    }, 1000);
+function pausePomodoro() {
+  if (pomoInterval) {
+    clearInterval(pomoInterval);
+    pomoInterval = null;
+  }
 }
 
 function resetPomodoro() {
-    clearInterval(pomoInterval);
-    pomoTime = 25 * 60;
-    document.getElementById("pomo-timer").textContent = "25:00";
+  pausePomodoro();
+  pomoTime = pomoDefault;
+  renderPomo();
 }
 
-// --- To-Do List ---
-let todos = JSON.parse(localStorage.getItem("todos") || "[]");
+pomoStart.addEventListener("click", startPomodoro);
+pomoPause.addEventListener("click", pausePomodoro);
+pomoReset.addEventListener("click", resetPomodoro);
+renderPomo();
 
-function loadTodos() {
-    const ul = document.getElementById("todo-list");
-    ul.innerHTML = "";
-    todos.forEach((t, i) => {
-        ul.innerHTML += `<li>${t} <button onclick="delTodo(${i})">X</button></li>`;
-    });
+// ===== To-Do List (LocalStorage) =====
+const TODO_KEY = "deskbuddy_todos_v1";
+let todos = JSON.parse(localStorage.getItem(TODO_KEY) || "[]");
+
+const todoListEl = document.getElementById("todo-list");
+const todoInput = document.getElementById("todo-input");
+const todoAddBtn = document.getElementById("todo-add");
+
+function saveTodos() {
+  localStorage.setItem(TODO_KEY, JSON.stringify(todos));
 }
 
-function addTodo() {
-    let text = document.getElementById("todo-input").value;
-    if (text) {
-        todos.push(text);
-        localStorage.setItem("todos", JSON.stringify(todos));
-        loadTodos();
-    }
+function renderTodos() {
+  todoListEl.innerHTML = "";
+  todos.forEach((t, i) => {
+    const li = document.createElement("li");
+    li.textContent = t;
+    const btn = document.createElement("button");
+    btn.textContent = "X";
+    btn.style.marginLeft = "8px";
+    btn.onclick = () => {
+      todos.splice(i, 1);
+      saveTodos();
+      renderTodos();
+    };
+    li.appendChild(btn);
+    todoListEl.appendChild(li);
+  });
 }
 
-function delTodo(i) {
-    todos.splice(i, 1);
-    localStorage.setItem("todos", JSON.stringify(todos));
-    loadTodos();
-}
+todoAddBtn.addEventListener("click", () => {
+  const v = todoInput.value.trim();
+  if (!v) return;
+  todos.push(v);
+  todoInput.value = "";
+  saveTodos();
+  renderTodos();
+});
 
-loadTodos();
+renderTodos();
+
+// ===== Safety: stop all timers when page unload (optional) =====
+window.addEventListener("beforeunload", () => {
+  if (eyeIntervalId) clearInterval(eyeIntervalId);
+  if (waterIntervalId) clearInterval(waterIntervalId);
+  if (pomoInterval) clearInterval(pomoInterval);
+});
