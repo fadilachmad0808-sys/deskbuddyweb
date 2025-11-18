@@ -1,14 +1,15 @@
-body {
-    font-family: Arial;
-    text-align: center;
-    background: #f0f0f0;
-}
-
+body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:20px; }
+.container { max-width: 900px; margin: 0 auto; }
+h1 { text-align:center; }
 .card {
-    background: white;
-    padding: 15px;
-    margin: 20px auto;
-    width: 300px;
-    border-radius: 10px;
-    box-shadow: 0 2px 6px #aaa;
+  background: #fff;
+  border-radius: 8px;
+  padding: 14px;
+  margin: 12px auto;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  width: 320px;
 }
+.controls { margin-top: 8px; }
+button { margin-right:8px; padding:6px 10px; border-radius:6px; border: none; cursor:pointer;}
+input { width: 100%; padding:8px; margin-top:8px; border-radius:6px; border:1px solid #ddd; }
+ul { text-align:left; padding-left:18px; }
